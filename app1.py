@@ -21,13 +21,35 @@ else:
     print("Warning: KIBA.csv file not found. Actual KIBA scores won't be available.")
 
 # Define the path to your saved model
-model_path = "model/sentiment_model.pkl"
+# model_path = "model/model.pkl"
+# if not os.path.exists(model_path):
+#     raise FileNotFoundError(f"Model file not found at {model_path}")
+
+
+drug_in_channels = 5  # number of features per atom in SMILES graph (you had 5 features: atomic num, degree, etc.)
+protein_embedding_size = 128  # your random protein embedding size
+hidden_channels = 64  # example value, check what you used
+out_channels = 1  # if you predict a single KIBA score (regression)
+
+# Define the path to your saved model
+model_path = "model/model.pkl"
+
 if not os.path.exists(model_path):
     raise FileNotFoundError(f"Model file not found at {model_path}")
 
 # Load the trained model using joblib
 model = joblib.load(model_path)
 model.eval()  # Set the model to evaluation mode
+
+
+# Create model instance with correct parameters
+# model = DrugProteinModel(
+#     drug_in_channels=drug_in_channels,
+#     protein_embedding_size=protein_embedding_size,
+#     hidden_channels=hidden_channels,
+#     out_channels=out_channels
+# )
+
 
 @app.route("/", methods=["GET"])
 def index():
@@ -43,9 +65,7 @@ def predict():
         return jsonify({"error": "Both 'drug' and 'target' fields are required."}), 400
     
     try:
-        # Get the predicted KIBA value from your model
-        predicted = get_affinity(model, drug, target)
-        
+
         # Look up the actual KIBA value from the CSV file
         actual_kiba = None
         if kiba_df is not None:
@@ -62,7 +82,10 @@ def predict():
                 actual_str = f"{actual_kiba:.4f}"
             except Exception:
                 actual_str = str(actual_kiba)
-        
+            
+            # Get the predicted KIBA value from your model
+            predicted = get_affinity(model, drug, target,actual_str)
+    
             response_text = f"Predicted KIBA: {predicted:.4f}, Actual KIBA: {actual_str}"
             print(response_text)
             return jsonify({"predicted": f"{predicted:.4f}","actual": actual_str})
